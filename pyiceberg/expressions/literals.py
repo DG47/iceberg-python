@@ -75,6 +75,14 @@ def _parse_numeric_string(value: str) -> Decimal:
     return number
 
 
+def _parse_integral_string(value: str, type_var: IcebergType) -> Decimal:
+    """Parse a numeric string for an integer type, rejecting values with a fractional part instead of truncating them."""
+    number = _parse_numeric_string(value)
+    if number != number.to_integral_value():
+        raise ValueError(f"Could not convert {value} into a {type_var}, value has a fractional part")
+    return number
+
+
 def _to_integral(value: Decimal, type_var: IcebergType) -> int:
     """Convert a Decimal to an int, rejecting values with a fractional part instead of rounding them."""
     if value != value.to_integral_value():
@@ -589,7 +597,7 @@ class StringLiteral(Literal[str]):
     @to.register(IntegerType)
     def _(self, type_var: IntegerType) -> Literal[int]:
         try:
-            number = _parse_numeric_string(self.value)
+            number = _parse_integral_string(self.value, type_var)
 
             if IntegerType.max < number:
                 return IntAboveMax()
@@ -602,7 +610,7 @@ class StringLiteral(Literal[str]):
     @to.register(LongType)
     def _(self, type_var: LongType) -> Literal[int]:
         try:
-            long_value = _parse_numeric_string(self.value)
+            long_value = _parse_integral_string(self.value, type_var)
             if LongType.max < long_value:
                 return LongAboveMax()
             elif LongType.min > long_value:

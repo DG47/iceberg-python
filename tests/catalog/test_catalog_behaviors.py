@@ -1427,6 +1427,13 @@ def test_scan_integer_column_with_decimal_literal(catalog: Catalog) -> None:
     # Rounding 2.6 to 3 would turn x > 2.6 into x > 3 and silently drop x = 3
     with pytest.raises(ValueError, match="Could not convert 2.6 into a int"):
         tbl.scan(row_filter="x > 2.6").to_arrow()
+    # A quoted literal is converted from a string, and truncating '2.5' to 2 would match x = 2
+    assert tbl.scan(row_filter="x = '2'").to_arrow()["x"].to_pylist() == [2]
+    with pytest.raises(ValueError, match="Could not convert 2.5 into a int"):
+        tbl.scan(row_filter="x = '2.5'").to_arrow()
+    with pytest.raises(ValueError, match="Could not convert 2.5 into a int"):
+        tbl.delete("x = '2.5'")
+    assert sorted(tbl.scan().to_arrow()["x"].to_pylist()) == [1, 2, 3, 4]
 
 
 def test_scan_negated_comparison_matches_file_pruning_for_nan(catalog: Catalog) -> None:
